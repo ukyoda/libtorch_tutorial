@@ -32,3 +32,5 @@
 *.app
 
 tmp
+__pycache__
+*.pyc
