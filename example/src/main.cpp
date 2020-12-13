@@ -9,6 +9,9 @@
 #define RESIZE_SIZE 256
 #define NET_SIZE 224
 
+/**
+ * リサイズとセンタークロップを行う。
+ */
 void resize_and_crop(const cv::Mat& src, cv::Mat& dst) {
     const cv::Size org_size = src.size();
     cv::Size resize_size;
@@ -33,6 +36,11 @@ void resize_and_crop(const cv::Mat& src, cv::Mat& dst) {
     roi.copyTo(dst);
 }
 
+/**
+ * cv::Matをtorch::Tensorにする。
+ * * GPUの場合はcudaMemcpyでコピー
+ * * CPUの場合はmemcpyでコピー
+ */
 void mat_to_tensor(const cv::Mat& src, torch::Tensor& tensor, bool gpu) {
     const cv::Size size = src.size();
     const int channel = src.channels();
@@ -58,8 +66,9 @@ void mat_to_tensor(const cv::Mat& src, torch::Tensor& tensor, bool gpu) {
         op = op.device(torch::kCPU);
         tensor = torch::zeros({ channel, size.height, size.width }, op);
         for (auto i = 0; i < split_src.size(); ++i) {
+            auto idx = split_src.size() - 1 - i;
             std::memcpy(
-                tensor.data_ptr() + (size.width * size.height * sizeof(unsigned char) * i),
+                tensor.data_ptr() + (size.width * size.height * sizeof(unsigned char) * idx),
                 split_src[i].data,
                 sizeof(unsigned char) * size.width * size.height
             );
@@ -67,8 +76,13 @@ void mat_to_tensor(const cv::Mat& src, torch::Tensor& tensor, bool gpu) {
     }
 }
 
+/**
+ * 画像(を正規化)
+ */
 void normalize(torch::Tensor& tensor) {
+    tensor = tensor.to(torch::kFloat32); // float32にキャスト
     tensor /= 255.;
+    // もうちょいいい書き方ありそう;;
     tensor[0].sub_(0.485).div_(0.229);
     tensor[1].sub_(0.456).div_(0.224);
     tensor[2].sub_(0.406).div_(0.225);
@@ -96,7 +110,6 @@ int main(int argc, char** argv) {
     // torch::Tensorに変換
     torch::Tensor input_tensor;
     mat_to_tensor(crop_img, input_tensor, true);
-    input_tensor = input_tensor.to(torch::kFloat32); // float32にキャスト
     normalize(input_tensor); // 正規化
     input_tensor = input_tensor.unsqueeze(0); // バッチサイズ1にする
 
