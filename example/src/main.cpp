@@ -1,13 +1,34 @@
 #include <iostream>
+#include <fstream>
 #include <torch/torch.h>
 #include <torch/script.h>
 #include <opencv2/opencv.hpp>
 #include <cuda_runtime.h>
 #include <c10/cuda/CUDAStream.h>
 #include <cstring>
+#include <string>
+#include <vector>
 
 #define RESIZE_SIZE 256
 #define NET_SIZE 224
+
+/**
+ * ファイル読み込み
+ */
+bool load_labels(const std::string& filename, std::vector<std::string>& labels) {
+    std::ifstream ifs(filename);
+    if (!ifs) {
+        std::cerr << "ファイルロードに失敗しました" << std::endl;
+        return false;
+    }
+    std::string label;
+    while (std::getline(ifs, label))
+    {
+        labels.push_back(label);
+    }
+    return true;
+
+}
 
 /**
  * リサイズとセンタークロップを行う。
@@ -89,14 +110,20 @@ void normalize(torch::Tensor& tensor) {
 }
 
 int main(int argc, char** argv) {
-    if (argc != 3) {
+    if (argc != 4) {
         std::cerr << "Error!!" << std::endl;
         std::cerr << "<Usage>" << std::endl;
-        std::cerr << "    ./example <modelfile> <src image file>" << std::endl;
+        std::cerr << "    ./example <modelfile> <label file> <src image file>" << std::endl;
+        return 1;
+    }
+    // ラベルをロード
+    std::vector<std::string> labels;
+    if (!load_labels(argv[2], labels)) {
+        std::cerr << "ラベルがロードできませんでした" << std::endl;
         return 1;
     }
     // 画像をロード
-    cv::Mat src = cv::imread(argv[2]);
+    cv::Mat src = cv::imread(argv[3]);
     if (src.empty()) {
         std::cerr << "画像がロードできませんでした" << std::endl;
         return 1;
@@ -121,6 +148,8 @@ int main(int argc, char** argv) {
     indices = indices.to(torch::kCPU);
     auto index = indices[0].item().toInt();
     auto score = scores.toTensor().index({0, index}).item().toFloat();
-    std::cout << index << ", " << score << std::endl;
+    std::cout << "index: " << index         << std::endl
+              << "label: " << labels[index] << std::endl
+              << "score: " << score         << std::endl;
     return 0;
 }
