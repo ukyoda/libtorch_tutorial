@@ -49,10 +49,10 @@ Pytorch(torchvision)のPretrain済モデルで画像分類ができます！
 $ docker build -it libtorch-tutorial:latest .
 ```
 
-#### 3. 下記コマンドで、Dockerコンテナを作成してください
+#### 3. docker-run.shを実行し、Dockerコンテナを作成してください
 
 ```bash
-$ docker run --rm -it -v${PWD}:/app -w/app libtorch-tutorial:latest bash 
+$ bash docker-run.sh
 ```
 
 ### モデルのtorchscript変換
