@@ -2,7 +2,7 @@
 
 IMG=libtorch_tutorial:latest
 SRC_DIR=$(cd $(dirname $0);pwd)
-DIRNAME=$(basename $(dirname ${SRC_DIR}))
+DIRNAME=$(basename $(dirname ${0}))
 docker run --rm -it \
     -w /root/${DIRNAME} \
     -v ${PWD}:/root/${DIRNAME} \
